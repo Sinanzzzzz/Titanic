@@ -1,0 +1,62 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+
+st.title("Titanic Survival Prediction 🚢")
+
+# File upload
+uploaded_file = st.file_uploader("Upload Titanic CSV file", type=["csv"])
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.write("### Data Preview", df.head())
+
+    # Preprocessing
+    df['Age'] = df['Age'].fillna(df['Age'].mean())
+    df['Embarked'] = df['Embarked'].fillna(df['Embarked'].mode()[0])
+    
+    le = LabelEncoder()
+    df['Sex'] = le.fit_transform(df['Sex'])
+    df['Embarked'] = le.fit_transform(df['Embarked'])
+    
+    X = df.drop(['Survived', 'Name', 'Ticket', 'Cabin'], axis=1, errors='ignore')
+    y = df['Survived']
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    # Model selection
+    model_choice = st.selectbox("Choose a Model", ["SVM", "KNN", "Naive Bayes"])
+
+    if st.button("Train and Evaluate"):
+        if model_choice == "SVM":
+            model = SVC()
+        elif model_choice == "KNN":
+            model = KNeighborsClassifier()
+        else:
+            model = GaussianNB()
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        acc = accuracy_score(y_test, y_pred)
+        st.success(f"Accuracy: {acc:.2f}")
+
+        st.text("Classification Report")
+        st.text(classification_report(y_test, y_pred))
+
+        cm = confusion_matrix(y_test, y_pred)
+        fig, ax = plt.subplots()
+        sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", ax=ax)
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+        st.pyplot(fig)
